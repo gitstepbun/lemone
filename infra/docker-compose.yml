@@ -39,6 +39,9 @@ services:
       KC_SPI_THEME_DEFAULT: lemone
       LEMONE_WORK_URL: ${WORK_PUBLIC_URL:-http://localhost:3001}
       LEMONE_CHAT_URL: ${CHAT_PUBLIC_URL:-http://localhost:3002}
+      OIDC_CLIENT_WORK_SECRET: ${OIDC_CLIENT_WORK_SECRET:-dev-work-secret-ganti}
+      OIDC_CLIENT_CHAT_SECRET: ${OIDC_CLIENT_CHAT_SECRET:-dev-chat-secret-ganti}
+      IDP_PROVISIONER_CLIENT_SECRET: ${IDP_PROVISIONER_CLIENT_SECRET:-dev-provisioner-secret-ganti}
     ports:
       - "${KC_PORT:-8080}:8080"
       - "9000:9000"

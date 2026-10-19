@@ -1,0 +1,52 @@
+# Produksi di belakang nginx yang SUDAH ADA di VPS (tanpa Caddy). Semua port hanya di 127.0.0.1.
+# Keycloak dilayani di https://lemone.work/auth (relative path), portal di lemone.work/user, Chat di lemone.chat.
+# Jalankan dari akar repo:
+#   docker compose -f infra/docker-compose.yml -f infra/prod/docker-compose.nginx.yml --env-file .env up -d --build
+name: lemone
+
+services:
+  postgres:
+    ports: !override ["127.0.0.1:5432:5432"]
+
+  keycloak:
+    command: ["start", "--import-realm", "--http-port=8080", "--http-relative-path=/auth", "--proxy-headers=xforwarded", "--http-enabled=true", "--hostname=${KC_PUBLIC_URL}", "--hostname-backchannel-dynamic=true"]
+    ports: !override ["127.0.0.1:8080:8080"]
+
+  api:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://lemone_api:${API_DB_PASSWORD}@postgres:5432/lemone
+      KC_ADMIN_URL: http://keycloak:8080/auth
+    ports: ["127.0.0.1:4000:4000"]
+    depends_on: [postgres, keycloak]
+
+  worker:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    command: ["node", "dist/worker.js"]
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://lemone_api:${API_DB_PASSWORD}@postgres:5432/lemone
+      KC_ADMIN_URL: http://keycloak:8080/auth
+      WORKER_ID: worker-1
+    depends_on: [postgres, keycloak]
+
+  work-web:
+    build:
+      context: ..
+      dockerfile: apps/work-web/Dockerfile
+      args: { NEXT_PUBLIC_CHAT_URL: "${CHAT_PUBLIC_URL}" }
+    restart: unless-stopped
+    environment: { API_INTERNAL_URL: http://api:4000 }
+    ports: ["127.0.0.1:3001:3001"]
+
+  chat-web:
+    build:
+      context: ..
+      dockerfile: apps/chat-web/Dockerfile
+      args: { NEXT_PUBLIC_WS_URL: "${CHAT_WS_URL}" }
+    restart: unless-stopped
+    environment: { API_INTERNAL_URL: http://api:4000 }
+    ports: ["127.0.0.1:3002:3002"]

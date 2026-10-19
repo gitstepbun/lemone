@@ -232,7 +232,8 @@
         "profile",
         "roles",
         "lemone-api"
-      ]
+      ],
+      "secret": "${env.OIDC_CLIENT_WORK_SECRET:dev-work-secret-ganti}"
     },
     {
       "clientId": "lemone-chat-web",
@@ -262,7 +263,8 @@
         "profile",
         "roles",
         "lemone-api"
-      ]
+      ],
+      "secret": "${env.OIDC_CLIENT_CHAT_SECRET:dev-chat-secret-ganti}"
     },
     {
       "clientId": "lemone-chat-android",
@@ -326,7 +328,8 @@
       "defaultClientScopes": [
         "basic",
         "roles"
-      ]
+      ],
+      "secret": "${env.IDP_PROVISIONER_CLIENT_SECRET:dev-provisioner-secret-ganti}"
     }
   ],
   "users": [

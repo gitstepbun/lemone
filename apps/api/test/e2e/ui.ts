@@ -70,7 +70,7 @@ async function main() {
   });
   await step('02 Aktifkan akun → login IdP (sandi sementara) → ganti sandi → Akun aktif', async () => {
     await page.getByRole('button', { name: 'Aktifkan akun' }).click();
-    await page.waitForURL(/localhost:8080\/realms\/lemone/, { timeout: 20000 });
+    await page.waitForURL(/localhost:8080\/(auth\/)?realms\/lemone/, { timeout: 20000 });
     await shot('02-login-idp');
     await page.fill('#password', temp);
     await page.click('#kc-login');
@@ -145,7 +145,7 @@ async function main() {
     const p2 = await ctx2.newPage();
     await p2.goto(`http://localhost:3001/activate?t=${sari.token}`);
     await p2.getByRole('button', { name: 'Aktifkan akun' }).click();
-    await p2.waitForURL(/localhost:8080\/realms\/lemone/, { timeout: 20000 });
+    await p2.waitForURL(/localhost:8080\/(auth\/)?realms\/lemone/, { timeout: 20000 });
     await p2.fill('#password', sari.temp);
     await p2.click('#kc-login');
     await p2.waitForSelector('#password-new', { timeout: 20000 });

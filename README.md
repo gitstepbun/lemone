@@ -57,7 +57,21 @@ Hasil terakhir dan cakupan ada di `docs/laporan.md`.
 | AI | `AI_PROVIDER`, `AI_API_KEY` | `none` (asisten menjawab status saja) |
 | Signing & distribusi mobile | akun Google Play/App Store, `apps/mobile/app.json` (bundle `chat.lemone.app`) | Belum ada |
 
-## Staging/produksi
+## Deploy ke VPS (nginx yang sudah ada)
+
+VPS yang sudah melayani lemone.work lewat nginx: jalankan sekali dari Mac, idempoten (aman diulang):
+
+```bash
+ssh ubuntu@43.133.129.111 'curl -fsSL https://raw.githubusercontent.com/gitstepbun/lemone/main/infra/deploy.sh | bash'
+```
+
+Skrip memasang Docker bila belum ada, clone repo ke `~/lemone`, membuat `.env` dengan secret acak, membangun dan menjalankan container (port hanya di 127.0.0.1), menyisipkan rute portal + IdP ke server block https `lemone.work` (portal di `/user`, `/activate`; Keycloak di `/auth`, konsol admin diblokir), membuat situs `lemone.chat`, meminta sertifikat untuk `lemone.chat` bila DNS sudah mengarah ke VPS, lalu mencetak kredensial Owner pertama sekali. Situs lama di lemone.work tidak diubah selain penambahan `include`; berkas asli dicadangkan di `/etc/nginx/lemone-backups/`.
+
+Prasyarat DNS: A record `lemone.chat` → IP VPS (saat ini masih parkir Hostinger). `lemone.work` sudah mengarah ke VPS; tidak perlu subdomain baru.
+
+Opsi: `OWNER_EMPLOYEE`, `OWNER_USERNAME`, `ACME_EMAIL` sebagai variabel env sebelum `bash`.
+
+## Staging/produksi dengan Caddy (server kosong)
 
 ```bash
 docker compose -f infra/docker-compose.yml -f infra/prod/docker-compose.prod.yml --env-file .env up -d --build
