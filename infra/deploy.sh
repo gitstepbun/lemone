@@ -79,7 +79,7 @@ $COMPOSE up -d --build
 
 log "Menunggu API sehat"
 for i in $(seq 1 60); do
-  if curl -fsS http://127.0.0.1:4000/health 2>/dev/null | grep -q '"ok":true'; then break; fi
+  if curl -fsS http://127.0.0.1:14000/health 2>/dev/null | grep -q '"ok":true'; then break; fi
   sleep 5
   [ "$i" = 60 ] && { echo "API tidak sehat. Log:"; $COMPOSE logs --tail=50 api keycloak; exit 1; }
 done
