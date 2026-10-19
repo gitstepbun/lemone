@@ -1,0 +1,19 @@
+{
+  "name": "lemone",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "infra:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml --env-file .env down",
+    "db:migrate": "pnpm --filter @lemone/api db:migrate",
+    "db:seed": "pnpm --filter @lemone/api db:seed",
+    "idp:bootstrap": "pnpm --filter @lemone/api idp:bootstrap",
+    "bootstrap:owner": "pnpm --filter @lemone/api bootstrap:owner",
+    "dev:api": "pnpm --filter @lemone/api dev",
+    "dev:worker": "pnpm --filter @lemone/api dev:worker",
+    "dev:work": "pnpm --filter @lemone/work-web dev",
+    "dev:chat": "pnpm --filter @lemone/chat-web dev",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm --filter @lemone/api test:e2e"
+  }
+}

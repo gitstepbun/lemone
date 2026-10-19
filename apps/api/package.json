@@ -1,0 +1,43 @@
+{
+  "name": "@lemone/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "node --no-experimental-strip-types --import tsx --watch src/main.ts",
+    "dev:worker": "node --no-experimental-strip-types --import tsx --watch src/worker.ts",
+    "start": "node dist/main.js",
+    "start:worker": "node dist/worker.js",
+    "db:migrate": "node --no-experimental-strip-types --import tsx src/db/migrate.ts",
+    "db:seed": "node --no-experimental-strip-types --import tsx src/db/seed.ts",
+    "idp:bootstrap": "node --no-experimental-strip-types --import tsx src/scripts/idp-bootstrap.ts",
+    "bootstrap:owner": "node --no-experimental-strip-types --import tsx src/scripts/bootstrap-owner.ts",
+    "test": "vitest run",
+    "test:e2e": "node --no-experimental-strip-types --import tsx test/e2e/run.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.6",
+    "@nestjs/core": "11.1.6",
+    "@nestjs/platform-express": "11.1.6",
+    "cookie": "1.0.2",
+    "dotenv": "16.4.7",
+    "jose": "6.0.11",
+    "kysely": "0.28.2",
+    "openid-client": "6.6.2",
+    "pg": "8.16.3",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "ws": "8.18.3",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.3",
+    "@types/node": "22.15.3",
+    "@types/pg": "8.15.4",
+    "@types/ws": "8.18.1",
+    "tsx": "4.20.3",
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
+  }
+}

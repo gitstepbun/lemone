@@ -1,0 +1,53 @@
+name: lemone
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_SUPERUSER:-lemone}
+      POSTGRES_PASSWORD: ${PG_SUPERPASSWORD:?set PG_SUPERPASSWORD in .env}
+      POSTGRES_DB: lemone
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?set API_DB_PASSWORD in .env}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_SUPERUSER:-lemone} -d lemone"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER:?set KC_ADMIN_USER in .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:?set KC_ADMIN_PASSWORD in .env}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}
+      KC_HOSTNAME: ${KC_PUBLIC_URL:-http://localhost:8080}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_SPI_THEME_DEFAULT: lemone
+      LEMONE_WORK_URL: ${WORK_PUBLIC_URL:-http://localhost:3001}
+      LEMONE_CHAT_URL: ${CHAT_PUBLIC_URL:-http://localhost:3002}
+    ports:
+      - "${KC_PORT:-8080}:8080"
+      - "9000:9000"
+    volumes:
+      - ./keycloak/realm-lemone.json:/opt/keycloak/data/import/realm-lemone.json:ro
+      - ./keycloak/themes/lemone:/opt/keycloak/themes/lemone:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

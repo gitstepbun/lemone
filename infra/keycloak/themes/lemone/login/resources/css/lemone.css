@@ -1,0 +1,6 @@
+:root { --pf-v5-global--primary-color--100: #FFCC00; --pf-v5-global--primary-color--200: #E6B800; }
+.pf-v5-c-button.pf-m-primary { background: #FFCC00 !important; color: #1a1a1a !important; border-radius: 10px; font-weight: 600; }
+.pf-v5-c-button.pf-m-primary:hover { background: #E6B800 !important; }
+.pf-v5-c-form-control, input.pf-v5-c-form-control { border-radius: 10px; }
+.pf-v5-c-login__main { border-radius: 16px; }
+#kc-header-wrapper { font-weight: 700; letter-spacing: 0; }
