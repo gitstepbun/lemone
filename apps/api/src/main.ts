@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { attachWebSocket } from './chat/ws';
+import { ChatService } from './chat/chat.service';
+import { startBusListener } from './common/bus';
 import { redact } from './common/crypto';
 import { config } from './config';
 import { migrate } from './db/migrate';
@@ -32,7 +34,9 @@ async function bootstrap() {
   });
   await app.init();
   const server = app.getHttpServer();
-  attachWebSocket(server);
+  await startBusListener();
+  const chat = app.get(ChatService);
+  attachWebSocket(server, (id) => chat.messageById(id));
   await app.listen(c.API_PORT);
   console.log(`API Lemone siap di :${c.API_PORT} (ERP=${c.ERP_ADAPTER}, issuer=${c.OIDC_ISSUER})`);
 }

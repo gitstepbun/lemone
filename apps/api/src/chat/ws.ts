@@ -31,7 +31,7 @@ async function stillAuthorized(userId: string, authzVersion: number): Promise<bo
   return Boolean(g);
 }
 
-export function attachWebSocket(server: HttpServer) {
+export function attachWebSocket(server: HttpServer, loadMessage: (id: string) => Promise<unknown>) {
   const wss = new WebSocketServer({ server, path: '/ws' });
   wss.on('connection', async (ws, req) => {
     const url = new URL(req.url ?? '/', 'http://x');
@@ -58,9 +58,13 @@ export function attachWebSocket(server: HttpServer) {
       if (sockets.get(userId)?.size === 0) sockets.delete(userId);
     });
   });
-  onChat((e) => {
-    const msg = JSON.stringify({ event: e.event, data: e.data, conversationId: e.conversationId });
-    for (const uid of e.recipientUserIds) for (const ws of sockets.get(uid) ?? []) if (ws.readyState === ws.OPEN) ws.send(msg);
+  onChat(async (e) => {
+    const targets = e.recipientUserIds.filter((uid) => sockets.has(uid));
+    if (!targets.length) return;
+    const data = e.messageId ? await loadMessage(e.messageId).catch(() => null) : e.data;
+    if (e.messageId && !data) return;
+    const msg = JSON.stringify({ event: e.event, data, conversationId: e.conversationId });
+    for (const uid of targets) for (const ws of sockets.get(uid) ?? []) if (ws.readyState === ws.OPEN) ws.send(msg);
   });
   onRevoke((e) => {
     if (!e.app || e.app === 'CHAT') closeUserSockets(e.userId);

@@ -1,0 +1,35 @@
+# Reverse proxy produksi/staging. Ganti nama host sesuai lingkungan; sertifikat otomatis (ACME).
+# Satu server fisik boleh melayani ketiga host.
+
+auth.lemone.work {
+	reverse_proxy keycloak:8080 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+	}
+}
+
+lemone.work {
+	# Portal akun: Next.js; /api dan /ws ke API yang sama
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy work-web:3001
+	}
+	header /activate* Cache-Control "no-store"
+	header /activate* Referrer-Policy "no-referrer"
+}
+
+lemone.chat {
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:4000
+	}
+	handle /ws {
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy chat-web:3002
+	}
+}

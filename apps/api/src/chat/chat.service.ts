@@ -67,7 +67,8 @@ export class ChatService {
     const wanted = new Set(officers.filter((o) => o.divisions === null || o.divisions.includes(division)).map((o) => o.hr_user_id));
     const current = await db.selectFrom('chat.participants').select(['user_id', 'role']).where('conversation_id', '=', convId).where('left_at', 'is', null).execute();
     for (const id of wanted) {
-      await db.insertInto('chat.participants').values({ conversation_id: convId, user_id: id, role: 'OFFICER' }).onConflict((oc) => oc.columns(['conversation_id', 'user_id']).doUpdateSet({ left_at: null, role: 'OFFICER' })).execute();
+      // Pemilik inbox (MEMBER) tetap MEMBER walaupun ia petugas HR; petugas lain menjadi OFFICER.
+      await db.insertInto('chat.participants').values({ conversation_id: convId, user_id: id, role: 'OFFICER' }).onConflict((oc) => oc.columns(['conversation_id', 'user_id']).doUpdateSet({ left_at: null })).execute();
     }
     for (const c of current) {
       if (c.role === 'OFFICER' && !wanted.has(c.user_id)) {
@@ -300,9 +301,12 @@ export class ChatService {
     return full;
   }
 
+  /** Siarkan ke anggota lewat bus lintas proses. Pesan dikirim sebagai id (API mengambil isinya), event lain membawa data. */
   async broadcast(convId: string, event: string, data: unknown) {
     const members = await getDb().selectFrom('chat.participants').select('user_id').where('conversation_id', '=', convId).where('left_at', 'is', null).execute();
-    emitChat({ conversationId: convId, recipientUserIds: members.map((m) => m.user_id), event, data });
+    const msg = data as { id?: string } | null;
+    if ((event === 'message' || event === 'message.updated') && msg?.id) await emitChat({ conversationId: convId, recipientUserIds: members.map((m) => m.user_id), event, messageId: msg.id });
+    else await emitChat({ conversationId: convId, recipientUserIds: members.map((m) => m.user_id), event, data });
   }
 
   async markRead(me: Principal, convId: string, seq: number) {

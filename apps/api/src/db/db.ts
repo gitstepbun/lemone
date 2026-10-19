@@ -2,6 +2,8 @@ import { Kysely, PostgresDialect, sql } from 'kysely';
 import { Pool, types } from 'pg';
 // DATE (oid 1082) dikembalikan sebagai string YYYY-MM-DD, bukan Date dengan zona waktu.
 types.setTypeParser(1082, (v) => v);
+// BIGINT (oid 20) sebagai number: nomor urut pesan/versi jauh di bawah 2^53.
+types.setTypeParser(20, (v) => Number(v));
 import { config } from '../config';
 import type { DB } from './types';
 

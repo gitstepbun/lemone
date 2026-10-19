@@ -245,7 +245,7 @@ export class AccountsService {
       await audit({ actorUserId: actor.userId, action: 'grant.revoke', targetType: 'user', targetId: userId, details: { app } }, trx);
     });
     await this.sessions.revokeAllForUser(userId, `APP_REVOKED:${app}`, app);
-    emitRevoke({ userId, app, reason: 'APP_REVOKED' });
+    await emitRevoke({ userId, app, reason: 'APP_REVOKED' });
     await enqueueJob({ kind: 'REVOKE_APP', userId, idempotencyKey: `revoke-app:${userId}:${app}:${Date.now()}`, payload: { app, actorUserId: actor.userId } });
     return { app, status: 'REVOKED' };
   }
@@ -333,7 +333,7 @@ export class AccountsService {
       await audit({ actorUserId: o.actorUserId, actorKind: o.actorUserId ? 'USER' : 'WORKER', action: 'account.disable', targetType: 'user', targetId: userId, details: { reason, fromErp: o.fromErp } }, trx);
     });
     const n = await this.sessions.revokeAllForUser(userId, 'ACCOUNT_DISABLED');
-    emitRevoke({ userId, reason: 'ACCOUNT_DISABLED' });
+    await emitRevoke({ userId, reason: 'ACCOUNT_DISABLED' });
     const jobId = await enqueueJob({ kind: 'DEACTIVATE_ACCOUNT', userId, idempotencyKey: `deactivate:${userId}:${Date.now()}`, payload: { actorUserId: o.actorUserId, reason } });
     return { status: 'DISABLED', localSessionsRevoked: n, jobId, remote: 'DIJADWALKAN' };
   }
@@ -355,7 +355,7 @@ export class AccountsService {
     const s = await this.sessions.get(sessionId);
     if (!s || s.user_id !== userId) throw E.notFound('Sesi');
     await this.sessions.revoke(sessionId, 'ADMIN_REVOKED');
-    emitRevoke({ userId, reason: 'SESSION_REVOKED' });
+    await emitRevoke({ userId, reason: 'SESSION_REVOKED' });
     await audit({ actorUserId: actor.userId, action: 'session.revoke', targetType: 'user', targetId: userId, details: { sessionId } });
     return { ok: true };
   }
@@ -364,7 +364,7 @@ export class AccountsService {
     await this.detail(actor, userId);
     const n = await this.sessions.revokeAllForUser(userId, 'ADMIN_LOGOUT_ALL');
     await getDb().updateTable('directory.users').set({ tokens_not_before: new Date(), authz_version: sql`authz_version + 1` }).where('id', '=', userId).execute();
-    emitRevoke({ userId, reason: 'LOGOUT_ALL' });
+    await emitRevoke({ userId, reason: 'LOGOUT_ALL' });
     await enqueueJob({ kind: 'LOGOUT_ALL', userId, idempotencyKey: `logout-all:${userId}:${Date.now()}` });
     await audit({ actorUserId: actor.userId, action: 'session.logout_all', targetType: 'user', targetId: userId, details: { sessionsRevoked: n } });
     return { sessionsRevoked: n, idp: 'DIJADWALKAN' };
@@ -384,7 +384,7 @@ export class AccountsService {
     await idp().logoutAll(u.idp_user_ref);
     await this.sessions.revokeAllForUser(userId, 'RECOVERY');
     await getDb().updateTable('directory.users').set({ tokens_not_before: new Date() }).where('id', '=', userId).execute();
-    emitRevoke({ userId, reason: 'RECOVERY' });
+    await emitRevoke({ userId, reason: 'RECOVERY' });
     await audit({ actorUserId: actor.userId, action: 'account.recovery', targetType: 'user', targetId: userId, details: { method: 'HR_VERIFIED_TEMP_CREDENTIAL' } });
     return { username: d.user.username, temporaryPassword: temp, note: 'Serahkan langsung ke pemilik akun setelah verifikasi identitas. Tidak disimpan.' };
   }
