@@ -4,13 +4,13 @@
 
 ## Deploy lemone.chat (mode mandiri)
 
-Prasyarat: A record `lemone.chat` → IP VPS. Jalankan sekali dari Mac, idempoten (aman diulang; bila DNS belum sampai, skrip tetap memasang semuanya dan tinggal dijalankan ulang untuk sertifikat):
+Alamat: **https://chat.lemone.id** (DNS sudah mengarah ke VPS). Untuk host lain: `CHAT_HOST=... bash`. Jalankan sekali dari Mac, idempoten (aman diulang; bila DNS belum sampai, skrip tetap memasang semuanya dan tinggal dijalankan ulang untuk sertifikat):
 
 ```bash
 ssh ubuntu@43.133.129.111 'curl -fsSL https://raw.githubusercontent.com/gitstepbun/lemone/main/infra/chat/deploy-chat.sh | bash'
 ```
 
-Skrip `infra/chat/deploy-chat.sh`: memasang Docker/nginx/certbot bila belum ada, clone/pull ke `~/lemone`, menghentikan tumpukan portal+Keycloak lama bila ada, membuat `.env` (secret acak), menjalankan `infra/chat/docker-compose.chat.yml` (Postgres, API, worker, chat-web; port hanya di 127.0.0.1), memasang situs nginx `lemone.chat`, melepas rute portal `/akun` dari lemone.work, lalu meminta sertifikat Let's Encrypt dan verifikasi `https://lemone.chat/api/health`. Setelah itu buka https://lemone.chat → **Daftar**.
+Skrip `infra/chat/deploy-chat.sh`: memasang Docker/nginx/certbot bila belum ada, clone/pull ke `~/lemone`, menghentikan tumpukan portal+Keycloak lama bila ada, membuat `.env` (secret acak), menjalankan `infra/chat/docker-compose.chat.yml` (Postgres, API, worker, chat-web; port hanya di 127.0.0.1), memasang situs nginx `lemone.chat`, melepas rute portal `/akun` dari lemone.work, lalu meminta sertifikat Let's Encrypt dan verifikasi `https://lemone.chat/api/health`. Setelah itu buka https://chat.lemone.id → **Daftar**.
 
 Uji alur mandiri di browser: `RESET_DB=1 pnpm --filter @lemone/api test:local` (Chromium headless; daftar 2 akun, DM realtime, izin ke @hr, persetujuan admin, ganti sandi).
 

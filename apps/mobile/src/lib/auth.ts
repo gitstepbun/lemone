@@ -21,7 +21,7 @@ export function clientId(): string {
   return Platform.OS === 'ios' ? extra.iosClientId : extra.androidClientId;
 }
 
-export const redirectUri = AuthSession.makeRedirectUri({ scheme: 'lemone.chat', path: 'oauth/callback' });
+export const redirectUri = AuthSession.makeRedirectUri({ scheme: 'lemonechat', path: 'oauth/callback' });
 
 export async function discovery() {
   return AuthSession.fetchDiscoveryAsync(extra.oidcIssuer);
@@ -80,7 +80,7 @@ export async function logout(t: Tokens | null) {
   if (!t?.idToken) return;
   const disc = await discovery();
   if (disc.endSessionEndpoint) {
-    const url = `${disc.endSessionEndpoint}?id_token_hint=${encodeURIComponent(t.idToken)}&post_logout_redirect_uri=${encodeURIComponent(AuthSession.makeRedirectUri({ scheme: 'lemone.chat', path: 'oauth/logout' }))}`;
+    const url = `${disc.endSessionEndpoint}?id_token_hint=${encodeURIComponent(t.idToken)}&post_logout_redirect_uri=${encodeURIComponent(AuthSession.makeRedirectUri({ scheme: 'lemonechat', path: 'oauth/logout' }))}`;
     await WebBrowser.openAuthSessionAsync(url, redirectUri).catch(() => undefined);
   }
 }

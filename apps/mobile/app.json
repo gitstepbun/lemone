@@ -2,14 +2,14 @@
   "expo": {
     "name": "Lemone Chat",
     "slug": "lemone-chat",
-    "scheme": "lemone.chat",
+    "scheme": "lemonechat",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "chat.lemone.app",
       "supportsTablet": false,
-      "associatedDomains": ["applinks:lemone.chat"]
+      "associatedDomains": ["applinks:chat.lemone.id"]
     },
     "android": {
       "package": "chat.lemone.app",
@@ -17,7 +17,7 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "lemone.chat", "pathPrefix": "/mobile/callback" }],
+          "data": [{ "scheme": "https", "host": "chat.lemone.id", "pathPrefix": "/mobile/callback" }],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
@@ -25,8 +25,8 @@
     "plugins": ["expo-secure-store", "expo-web-browser"],
     "extra": {
       "oidcIssuer": "https://auth.lemone.work/realms/lemone",
-      "apiUrl": "https://lemone.chat/api",
-      "wsUrl": "wss://lemone.chat/ws",
+      "apiUrl": "https://chat.lemone.id/api",
+      "wsUrl": "wss://chat.lemone.id/ws",
       "androidClientId": "lemone-chat-android",
       "iosClientId": "lemone-chat-ios"
     }
