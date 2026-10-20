@@ -6,6 +6,15 @@
 # Opsi env:  OWNER_EMPLOYEE=EMP-0001 OWNER_USERNAME=stephanus ACME_EMAIL=step@lemone.id
 set -euo pipefail
 
+# Dijalankan lewat "curl | bash": bash membaca skrip dari stdin dan perintah anak (docker exec, apt) bisa menelan sisanya.
+# Salin diri ke berkas lalu jalankan ulang dari berkas dengan stdin dari /dev/null.
+if [ -z "${LEMONE_DEPLOY_SELF:-}" ]; then
+  SELF="$(mktemp /tmp/lemone-deploy.XXXXXX.sh)"
+  if [ -f "${BASH_SOURCE[0]:-}" ] && [ "${BASH_SOURCE[0]}" != "bash" ]; then cp "${BASH_SOURCE[0]}" "$SELF"; else cat > "$SELF"; fi
+  chmod +x "$SELF"
+  LEMONE_DEPLOY_SELF=1 exec bash "$SELF" "$@" </dev/null
+fi
+
 REPO_URL="${REPO_URL:-https://github.com/gitstepbun/lemone}"
 DIR="${DIR:-$HOME/lemone}"
 WORK_HOST="${WORK_HOST:-lemone.work}"
@@ -19,7 +28,7 @@ log() { printf '\n== %s\n' "$*"; }
 rand() { openssl rand -hex "$1"; }
 
 log "Paket dasar"
-export DEBIAN_FRONTEND=noninteractive
+export DEBIAN_FRONTEND=noninteractive LC_ALL=C.UTF-8 LANG=C.UTF-8
 sudo apt-get update -qq
 sudo apt-get install -y -qq git curl ca-certificates openssl python3 nginx certbot python3-certbot-nginx >/dev/null
 if ! command -v docker >/dev/null 2>&1; then
@@ -83,7 +92,7 @@ for i in $(seq 1 60); do
   sleep 5
   [ "$i" = 60 ] && { echo "API tidak sehat. Log:"; $COMPOSE logs --tail=50 api keycloak; exit 1; }
 done
-$COMPOSE exec -T api node dist/db/seed.js
+$COMPOSE exec -T api node dist/db/seed.js </dev/null
 
 log "nginx: rute portal + IdP ke server block ${WORK_HOST}, situs ${CHAT_HOST}"
 sudo cp infra/prod/nginx-lemone-proxy.conf /etc/nginx/snippets/lemone-proxy.conf
@@ -145,7 +154,7 @@ curl -fsS -o /dev/null -w "portal /masuk: %{http_code}\n" "https://${WORK_HOST}/
 OWNER_EXISTS=$($COMPOSE exec -T postgres psql -U lemone -d lemone -tAc "select count(*) from directory.role_assignments r join directory.users u on u.id=r.user_id where r.role='OWNER' and r.revoked_at is null and u.status in ('ACTIVE','PENDING_ACTIVATION')" 2>/dev/null || echo 0)
 if [ "${OWNER_EXISTS:-0}" = "0" ]; then
   log "Bootstrap Owner pertama (${OWNER_USERNAME}, ${OWNER_EMPLOYEE}). Kredensial di bawah tampil SEKALI."
-  $COMPOSE exec -T -e BOOTSTRAP_ENABLED=true api node dist/scripts/bootstrap-owner.js --employee "$OWNER_EMPLOYEE" --username "$OWNER_USERNAME"
+  $COMPOSE exec -T -e BOOTSTRAP_ENABLED=true api node dist/scripts/bootstrap-owner.js --employee "$OWNER_EMPLOYEE" --username "$OWNER_USERNAME" </dev/null
 else
   echo "Owner sudah ada, bootstrap dilewati."
 fi
