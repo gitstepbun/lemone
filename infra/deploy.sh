@@ -66,7 +66,8 @@ OIDC_CLIENT_WORK_SECRET=$(rand 24)
 OIDC_CLIENT_CHAT_ID=lemone-chat-web
 OIDC_CLIENT_CHAT_SECRET=$(rand 24)
 API_AUDIENCE=lemone-api
-WORK_PUBLIC_URL=https://${WORK_HOST}
+WORK_PUBLIC_URL=https://${WORK_HOST}/akun
+WORK_BASE_PATH=/akun
 CHAT_PUBLIC_URL=https://${CHAT_HOST}
 CHAT_WS_URL=wss://${CHAT_HOST}/ws
 SESSION_ENC_KEY=$(openssl rand -base64 32)
@@ -79,6 +80,9 @@ LOG_LEVEL=info
 EOF
   chmod 600 .env
 fi
+# Portal di bawah /akun (path /user milik situs lama)
+grep -q '^WORK_BASE_PATH=' .env || echo 'WORK_BASE_PATH=/akun' >> .env
+sed -i "s#^WORK_PUBLIC_URL=https://${WORK_HOST}\$#WORK_PUBLIC_URL=https://${WORK_HOST}/akun#" .env
 # DATABASE_URL harus memakai API_DB_PASSWORD yang sama
 API_DB_PASSWORD=$(grep '^API_DB_PASSWORD=' .env | cut -d= -f2-)
 sed -i "s#^DATABASE_URL=.*#DATABASE_URL=postgres://lemone_api:${API_DB_PASSWORD}@postgres:5432/lemone#" .env
@@ -170,17 +174,20 @@ else
 fi
 
 log "Verifikasi"
-curl -fsS "https://${WORK_HOST}/api/health" | head -c 200; echo
+curl -fsS "https://${WORK_HOST}/akun/api/health" | head -c 200; echo
 curl -fsS "https://${WORK_HOST}/auth/realms/lemone/.well-known/openid-configuration" | head -c 120; echo
-curl -fsS -o /dev/null -w "portal /masuk: %{http_code}\n" "https://${WORK_HOST}/masuk"
+curl -fsS -o /dev/null -w "portal /akun/masuk: %{http_code}\n" "https://${WORK_HOST}/akun/masuk"
 
 OWNER_EXISTS=$($COMPOSE exec -T postgres psql -U lemone -d lemone -tAc "select count(*) from directory.role_assignments r join directory.users u on u.id=r.user_id where r.role='OWNER' and r.revoked_at is null and u.status in ('ACTIVE','PENDING_ACTIVATION')" 2>/dev/null || echo 0)
 PENDING_OWNER=$($COMPOSE exec -T postgres psql -U lemone -d lemone -tAc "select u.id from directory.role_assignments r join directory.users u on u.id=r.user_id where r.role='OWNER' and r.revoked_at is null and u.status='PENDING_ACTIVATION' limit 1" 2>/dev/null || true)
 if [ -n "$PENDING_OWNER" ]; then
   # Owner sudah dibuat tetapi provisioning belum selesai (mis. secret IdP salah sebelumnya): jalankan ulang job yang sama.
-  $COMPOSE exec -T postgres psql -U lemone -d lemone -qc "update ops.provisioning_jobs set status='PENDING', next_run_at=now(), attempts=0 where user_id='$PENDING_OWNER' and kind='PROVISION_ACCOUNT' and status<>'DONE'" >/dev/null
+  # Worker dihentikan sementara supaya job tidak direbut (kredensial sekali-tampil harus keluar di layar ini).
+  $COMPOSE stop worker >/dev/null
+  $COMPOSE exec -T postgres psql -U lemone -d lemone -qc "update ops.provisioning_jobs set status='PENDING', stage='SETUP_IDENTITY', next_run_at=now(), attempts=0, locked_at=null where user_id='$PENDING_OWNER' and kind='PROVISION_ACCOUNT'" >/dev/null
   log "Melanjutkan provisioning Owner yang tertunda. Kredensial di bawah tampil SEKALI."
   $COMPOSE exec -T -e BOOTSTRAP_ENABLED=true api node dist/scripts/bootstrap-owner.js --employee "$OWNER_EMPLOYEE" --username "$OWNER_USERNAME" --force-recovery </dev/null || true
+  $COMPOSE start worker >/dev/null
 elif [ "${OWNER_EXISTS:-0}" = "0" ]; then
   log "Bootstrap Owner pertama (${OWNER_USERNAME}, ${OWNER_EMPLOYEE}). Kredensial di bawah tampil SEKALI."
   $COMPOSE exec -T -e BOOTSTRAP_ENABLED=true api node dist/scripts/bootstrap-owner.js --employee "$OWNER_EMPLOYEE" --username "$OWNER_USERNAME" </dev/null
@@ -188,4 +195,4 @@ else
   echo "Owner sudah ada, bootstrap dilewati."
 fi
 
-log "Selesai. Portal: https://${WORK_HOST}/user  Chat: https://${CHAT_HOST}  IdP: https://${WORK_HOST}/auth"
+log "Selesai. Portal: https://${WORK_HOST}/akun/user  Chat: https://${CHAT_HOST}  IdP: https://${WORK_HOST}/auth"

@@ -38,7 +38,7 @@ services:
     build:
       context: ..
       dockerfile: apps/work-web/Dockerfile
-      args: { NEXT_PUBLIC_CHAT_URL: "${CHAT_PUBLIC_URL}" }
+      args: { NEXT_PUBLIC_CHAT_URL: "${CHAT_PUBLIC_URL}", NEXT_PUBLIC_BASE_PATH: "${WORK_BASE_PATH:-}" }
     restart: unless-stopped
     environment: { API_INTERNAL_URL: http://api:4000 }
     ports: ["127.0.0.1:13001:3001"]

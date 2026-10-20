@@ -77,7 +77,7 @@ export function ActivateClient({ chatUrl }: { chatUrl: string }) {
     setBusy(true);
     try {
       const r = await api.post<{ ok: boolean; loginUrl: string }>('/activation/begin', { token: token.current });
-      window.location.href = r.loginUrl;
+      window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${r.loginUrl}`;
     } catch (e) {
       setBusy(false);
       // 409 body is { ok:false, status } ; the helper maps that `status` string into `code`.
@@ -90,7 +90,7 @@ export function ActivateClient({ chatUrl }: { chatUrl: string }) {
     setBusy(true);
     try {
       const c = await api.get<{ active: boolean; loginUrl?: string }>('/activation/context');
-      if (c.active && c.loginUrl) window.location.href = c.loginUrl;
+      if (c.active && c.loginUrl) window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${c.loginUrl}`;
       else {
         setBusy(false);
         toast('Konteks aktivasi tidak ditemukan. Buka lagi tautan aktivasi.', 'danger');
@@ -110,7 +110,7 @@ export function ActivateClient({ chatUrl }: { chatUrl: string }) {
           Buka Lemone Chat
         </a>
         {hasWork && (
-          <a href="/user" className="mt-3 block text-center text-[15px] text-ink underline">
+          <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/user`} className="mt-3 block text-center text-[15px] text-ink underline">
             Buka Lemone Work
           </a>
         )}

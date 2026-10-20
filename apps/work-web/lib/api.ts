@@ -1,3 +1,5 @@
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+export { BASE };
 export type ApiError = { code: string; message: string; status: number; [k: string]: unknown };
 
 export function isApiError(e: unknown): e is ApiError {
@@ -16,7 +18,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   let res: Response;
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${BASE}/api${path}`, {
       method,
       headers,
       credentials: 'same-origin',

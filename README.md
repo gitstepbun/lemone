@@ -65,9 +65,9 @@ VPS yang sudah melayani lemone.work lewat nginx: jalankan sekali dari Mac, idemp
 ssh ubuntu@43.133.129.111 'curl -fsSL https://raw.githubusercontent.com/gitstepbun/lemone/main/infra/deploy.sh | bash'
 ```
 
-Skrip memasang Docker bila belum ada, clone repo ke `~/lemone`, membuat `.env` dengan secret acak, membangun dan menjalankan container (port hanya di 127.0.0.1), menyisipkan rute portal + IdP ke server block https `lemone.work` (portal di `/user`, `/activate`; Keycloak di `/auth`, konsol admin diblokir), membuat situs `lemone.chat`, meminta sertifikat untuk `lemone.chat` bila DNS sudah mengarah ke VPS, lalu mencetak kredensial Owner pertama sekali. Situs lama di lemone.work tidak diubah selain penambahan `include`; berkas asli dicadangkan di `/etc/nginx/lemone-backups/`.
+Skrip memasang Docker bila belum ada, clone repo ke `~/lemone`, membuat `.env` dengan secret acak, membangun dan menjalankan container (port hanya di 127.0.0.1), menyisipkan rute portal + IdP ke server block https `lemone.work` (portal di `/akun/user`, `/akun/activate`; Keycloak di `/auth`, konsol admin diblokir; path `/user` milik situs lama tidak disentuh), membuat situs `lemone.chat`, meminta sertifikat untuk `lemone.chat` bila DNS sudah mengarah ke VPS, lalu mencetak kredensial Owner pertama sekali. Situs lama di lemone.work tidak diubah selain penambahan `include`; berkas asli dicadangkan di `/etc/nginx/lemone-backups/`.
 
-Prasyarat DNS: A record `lemone.chat` → IP VPS (saat ini masih parkir Hostinger). `lemone.work` sudah mengarah ke VPS; tidak perlu subdomain baru.
+Prasyarat DNS: A record `lemone.chat` → IP VPS (saat ini masih parkir Hostinger). `lemone.work` sudah mengarah ke VPS; tidak perlu subdomain baru. Portal akun: https://lemone.work/akun/user
 
 Opsi: `OWNER_EMPLOYEE`, `OWNER_USERNAME`, `ACME_EMAIL` sebagai variabel env sebelum `bash`.
 

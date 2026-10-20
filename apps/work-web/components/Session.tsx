@@ -19,10 +19,10 @@ export function useLogout() {
       try {
         if (all) await api.post('/auth/work/logout-all');
         const r = await api.post<{ redirect?: string }>('/auth/work/logout');
-        window.location.href = r.redirect || '/masuk';
+        window.location.href = r.redirect || `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/masuk`;
       } catch (e) {
         toast(isApiError(e) ? e.message : 'Gagal keluar.', 'danger');
-        if (isApiError(e) && e.status === 401) window.location.href = '/masuk';
+        if (isApiError(e) && e.status === 401) window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/masuk`;
       }
     },
     [toast],

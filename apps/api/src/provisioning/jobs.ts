@@ -70,14 +70,15 @@ export async function claimJob(workerId: string, jobId?: string): Promise<JobRow
     let q = trx
       .selectFrom('ops.provisioning_jobs')
       .selectAll()
-      .where('status', 'in', ['PENDING', 'RUNNING'])
-      .where('next_run_at', '<=', new Date())
-      .where((eb) => eb.or([eb('locked_at', 'is', null), eb('locked_at', '<', new Date(Date.now() - 5 * 60_000))]))
+      .where('status', 'in', jobId ? ['PENDING', 'RUNNING', 'NEEDS_REVIEW', 'FAILED'] : ['PENDING', 'RUNNING'])
+      .where((eb) => eb.or([eb('locked_at', 'is', null), eb('locked_at', '<', new Date(Date.now() - (jobId ? 30_000 : 5 * 60_000)))]))
       .orderBy('next_run_at')
       .limit(1)
       .forUpdate()
       .skipLocked();
+    // Eksekusi inline (permintaan admin) tidak menunggu next_run_at dan boleh mengambil alih job yang kuncinya basi.
     if (jobId) q = q.where('id', '=', jobId);
+    else q = q.where('next_run_at', '<=', new Date());
     const row = await q.executeTakeFirst();
     if (!row) return null;
     await trx
@@ -144,12 +145,15 @@ export async function runJob(row: JobRow): Promise<{ status: JobStatus; stage: s
 
 /** Jalankan job tertentu secara inline (dipakai request admin agar hasil sekali-tampil bisa diberikan). */
 export async function runJobInline(jobId: string): Promise<ReturnType<typeof runJob>> {
-  const row = await claimJob(`inline-${config().WORKER_ID}`, jobId);
-  if (!row) {
-    const cur = await getDb().selectFrom('ops.provisioning_jobs').select(['status', 'stage']).where('id', '=', jobId).executeTakeFirstOrThrow();
-    return { status: cur.status, stage: cur.stage, ephemeral: {}, error: 'Job sedang dikunci proses lain' };
+  for (let i = 0; i < 20; i++) {
+    const row = await claimJob(`inline-${config().WORKER_ID}`, jobId);
+    if (row) return runJob(row);
+    const cur = await getDb().selectFrom('ops.provisioning_jobs').select(['status', 'stage', 'locked_at']).where('id', '=', jobId).executeTakeFirstOrThrow();
+    if (cur.status === 'DONE') return { status: 'DONE', stage: 'DONE', ephemeral: {}, error: 'Job sudah diselesaikan proses lain; hasil sekali-tampil tidak tersedia di sini' };
+    await new Promise((r) => setTimeout(r, 1000));
   }
-  return runJob(row);
+  const cur = await getDb().selectFrom('ops.provisioning_jobs').select(['status', 'stage']).where('id', '=', jobId).executeTakeFirstOrThrow();
+  return { status: cur.status, stage: cur.stage, ephemeral: {}, error: 'Job sedang dikunci proses lain' };
 }
 
 /** Loop worker: proses job & outbox. */

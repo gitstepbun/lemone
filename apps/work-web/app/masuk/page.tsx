@@ -11,7 +11,7 @@ export default async function MasukPage({ searchParams }: { searchParams: Promis
         <div className="mb-6 text-center text-[24px] font-bold text-ink">Lemone Work</div>
         {msg && <p className="mb-4 rounded-field border border-red-200 bg-red-50 px-3 py-2 text-danger">{msg}</p>}
         <a
-          href="/api/auth/work/login?return=/user"
+          href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/auth/work/login?return=/user`}
           className="block w-full rounded-field bg-lemone px-4 py-3 text-center text-[15px] font-medium text-ink hover:bg-lemone-hover"
         >
           Masuk dengan akun Lemone

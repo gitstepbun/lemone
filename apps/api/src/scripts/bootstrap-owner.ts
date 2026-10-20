@@ -63,8 +63,14 @@ async function main() {
     console.log(`Owner diberikan ke akun aktif ${username}. Role MFA IdP disinkronkan oleh worker.`);
   } else {
     const jobId = await enqueueJob({ kind: 'PROVISION_ACCOUNT', userId, idempotencyKey: `provision:${userId}`, payload: { delivery: 'HR_HANDOVER' } });
-    const run = await runJobInline(jobId);
+    let run = await runJobInline(jobId);
     if (run.status !== 'DONE') throw new Error(`Provisioning belum selesai: ${run.stage} ${run.error ?? ''}`);
+    if (!run.ephemeral.invitationToken) {
+      // Job diselesaikan worker; kredensialnya tidak pernah tercetak. Terbitkan ulang undangan + sandi sementara secara inline.
+      const re = await enqueueJob({ kind: 'REISSUE_INVITATION', userId, idempotencyKey: `reissue:${userId}:${Date.now()}`, payload: { delivery: 'HR_HANDOVER' } });
+      run = await runJobInline(re);
+      if (run.status !== 'DONE') throw new Error(`Penerbitan ulang undangan gagal: ${run.stage} ${run.error ?? ''}`);
+    }
     await enqueueJob({ kind: 'SYNC_IDP_ADMIN_ROLE', userId, idempotencyKey: `sync-admin-role:${userId}:${Date.now()}` });
     await runJobInline((await db.selectFrom('ops.provisioning_jobs').select('id').where('kind', '=', 'SYNC_IDP_ADMIN_ROLE').where('user_id', '=', userId).orderBy('created_at', 'desc').executeTakeFirstOrThrow()).id);
     console.log('\n=== SERAHKAN SEKALI, TIDAK DISIMPAN ===');
