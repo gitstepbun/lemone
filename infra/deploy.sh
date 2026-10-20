@@ -94,6 +94,29 @@ for i in $(seq 1 60); do
 done
 $COMPOSE exec -T api node dist/db/seed.js </dev/null
 
+log "Menyamakan client secret Keycloak dengan .env (realm yang sudah ada tidak ditimpa --import-realm)"
+set -a; . ./.env; set +a
+KC_IN="http://127.0.0.1:18080/auth"
+for i in $(seq 1 30); do curl -fsS "$KC_IN/realms/master" >/dev/null 2>&1 && break; sleep 3; done
+ADMIN_TOKEN=$(curl -fsS -d "client_id=admin-cli&grant_type=password&username=${KC_ADMIN_USER}&password=${KC_ADMIN_PASSWORD}" "$KC_IN/realms/master/protocol/openid-connect/token" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("access_token",""))' || true)
+if [ -n "$ADMIN_TOKEN" ]; then
+  for pair in "lemone-provisioner=${IDP_PROVISIONER_CLIENT_SECRET}" "lemone-work-web=${OIDC_CLIENT_WORK_SECRET}" "lemone-chat-web=${OIDC_CLIENT_CHAT_SECRET}"; do
+    cid="${pair%%=*}"; sec="${pair#*=}"
+    uuid=$(curl -fsS -H "Authorization: Bearer $ADMIN_TOKEN" "$KC_IN/admin/realms/lemone/clients?clientId=$cid" | python3 -c 'import json,sys;c=json.load(sys.stdin);print(c[0]["id"] if c else "")')
+    if [ -n "$uuid" ]; then
+      curl -fsS -o /dev/null -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "content-type: application/json" "$KC_IN/admin/realms/lemone/clients/$uuid" -d "{\"secret\":\"$sec\"}" && echo "secret $cid disamakan"
+    fi
+  done
+  # redirect URI dan hostname publik mengikuti .env
+  for pair in "lemone-work-web=${WORK_PUBLIC_URL}/api/auth/work/callback" "lemone-chat-web=${CHAT_PUBLIC_URL}/api/auth/chat/callback"; do
+    cid="${pair%%=*}"; uri="${pair#*=}"; base="${uri%%/api/*}"
+    uuid=$(curl -fsS -H "Authorization: Bearer $ADMIN_TOKEN" "$KC_IN/admin/realms/lemone/clients?clientId=$cid" | python3 -c 'import json,sys;c=json.load(sys.stdin);print(c[0]["id"] if c else "")')
+    [ -n "$uuid" ] && curl -fsS -o /dev/null -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "content-type: application/json" "$KC_IN/admin/realms/lemone/clients/$uuid" -d "{\"redirectUris\":[\"$uri\"],\"webOrigins\":[\"$base\"],\"attributes\":{\"pkce.code.challenge.method\":\"S256\",\"post.logout.redirect.uris\":\"$base/*\"}}" && echo "redirect $cid -> $uri"
+  done
+else
+  echo "PERINGATAN: tidak bisa login admin Keycloak; secret tidak disamakan"
+fi
+
 log "nginx: rute portal + IdP ke server block ${WORK_HOST}, situs ${CHAT_HOST}"
 sudo cp infra/prod/nginx-lemone-proxy.conf /etc/nginx/snippets/lemone-proxy.conf
 sudo cp infra/prod/nginx-lemone-work.conf /etc/nginx/snippets/lemone-work-portal.conf
@@ -152,7 +175,13 @@ curl -fsS "https://${WORK_HOST}/auth/realms/lemone/.well-known/openid-configurat
 curl -fsS -o /dev/null -w "portal /masuk: %{http_code}\n" "https://${WORK_HOST}/masuk"
 
 OWNER_EXISTS=$($COMPOSE exec -T postgres psql -U lemone -d lemone -tAc "select count(*) from directory.role_assignments r join directory.users u on u.id=r.user_id where r.role='OWNER' and r.revoked_at is null and u.status in ('ACTIVE','PENDING_ACTIVATION')" 2>/dev/null || echo 0)
-if [ "${OWNER_EXISTS:-0}" = "0" ]; then
+PENDING_OWNER=$($COMPOSE exec -T postgres psql -U lemone -d lemone -tAc "select u.id from directory.role_assignments r join directory.users u on u.id=r.user_id where r.role='OWNER' and r.revoked_at is null and u.status='PENDING_ACTIVATION' limit 1" 2>/dev/null || true)
+if [ -n "$PENDING_OWNER" ]; then
+  # Owner sudah dibuat tetapi provisioning belum selesai (mis. secret IdP salah sebelumnya): jalankan ulang job yang sama.
+  $COMPOSE exec -T postgres psql -U lemone -d lemone -qc "update ops.provisioning_jobs set status='PENDING', next_run_at=now(), attempts=0 where user_id='$PENDING_OWNER' and kind='PROVISION_ACCOUNT' and status<>'DONE'" >/dev/null
+  log "Melanjutkan provisioning Owner yang tertunda. Kredensial di bawah tampil SEKALI."
+  $COMPOSE exec -T -e BOOTSTRAP_ENABLED=true api node dist/scripts/bootstrap-owner.js --employee "$OWNER_EMPLOYEE" --username "$OWNER_USERNAME" --force-recovery </dev/null || true
+elif [ "${OWNER_EXISTS:-0}" = "0" ]; then
   log "Bootstrap Owner pertama (${OWNER_USERNAME}, ${OWNER_EMPLOYEE}). Kredensial di bawah tampil SEKALI."
   $COMPOSE exec -T -e BOOTSTRAP_ENABLED=true api node dist/scripts/bootstrap-owner.js --employee "$OWNER_EMPLOYEE" --username "$OWNER_USERNAME" </dev/null
 else
