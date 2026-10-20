@@ -71,7 +71,7 @@ export class PrincipalService {
   /** Resolusi identitas: Bearer (mobile/API) atau cookie sesi aplikasi (web BFF). */
   async resolve(req: Request, app: AppKey): Promise<Principal | null> {
     const auth = req.headers.authorization;
-    if (auth?.startsWith('Bearer ')) {
+    if (auth?.startsWith('Bearer ') && config().AUTH_MODE === 'oidc') {
       let payload;
       try {
         payload = await verifyAccessToken(auth.slice(7));

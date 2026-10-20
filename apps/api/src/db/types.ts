@@ -299,6 +299,15 @@ export interface LeaveRequestHistoryTable {
   snapshot: Json<Record<string, unknown>>;
 }
 
+export interface LocalCredentialsTable {
+  user_id: string;
+  password_hash: string;
+  failed_attempts: Generated<number>;
+  locked_until: TsNull;
+  password_changed_at: GenTs;
+  created_at: GenTs;
+}
+
 export interface SchemaMigrationsTable {
   name: string;
   applied_at: GenTs;
@@ -317,6 +326,7 @@ export interface DB {
   'directory.application_sessions': ApplicationSessionsTable;
   'directory.device_registrations': DeviceRegistrationsTable;
   'directory.org_locks': OrgLocksTable;
+  'directory.local_credentials': LocalCredentialsTable;
   'ops.provisioning_jobs': ProvisioningJobsTable;
   'ops.outbox_events': OutboxEventsTable;
   'ops.audit_events': AuditEventsTable;

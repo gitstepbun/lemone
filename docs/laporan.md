@@ -70,6 +70,29 @@ Unit (`pnpm --filter @lemone/api test`): 17 tes PASS (parser izin Bahasa Indones
 | Voice note | Pesan tersimpan sebagai VOICE; interpretasi/konfirmasi belum ada | Jalur transkripsi privat |
 | Domain, DNS, TLS, hosting | Tidak dapat diverifikasi dari sesi ini | Akses DNS/hosting; `infra/prod/Caddyfile` siap |
 
+## Mode mandiri lemone.chat (20 Oktober 2026)
+
+Arah terbaru: lemone.chat hidup sendiri tanpa portal/Keycloak. `AUTH_MODE=local` (default), pendaftaran mandiri username + sandi (argon2id, kunci 15 menit setelah 8 kali gagal), pendaftar pertama menjadi Owner + HR, username menjadi nomor karyawan dan masuk ke direktori (divisi "Umum", sumber PENDAFTARAN) agar alur izin dan absensi DEMO berjalan.
+
+Uji browser `pnpm --filter @lemone/api test:local` (Chromium headless, viewport 420×860, DB direset): **6/6 PASS**
+
+| # | Alur | Status |
+|---|---|---|
+| 1 | Daftar dua akun lewat form (Andi → admin pertama, Citra) | PASS |
+| 2 | Sandi salah ditolak | PASS |
+| 3 | Andi cari Citra di direktori → DM → balasan tiba realtime (WebSocket) | PASS |
+| 4 | Citra kirim "Saya izin tidak masuk besok karena urusan keluarga" ke @hr → kartu Menunggu persetujuan | PASS |
+| 5 | Andi setujui di tab HR → kartu Citra berubah Disetujui, absensi DEMO tersinkron (`DEMO-ATT-n`) | PASS |
+| 6 | Ganti kata sandi di Saya → sesi lama putus → masuk dengan sandi baru | PASS |
+
+Bukti: `docs/bukti/19-local-daftar.png`, `20-local-dm.png`, `21-local-hr-setujui.png`, `22-local-kartu-disetujui.png`, `23-masuk-baru.png`, `24-masuk-desktop.png`.
+
+Perbaikan yang ditemukan oleh uji ini: (a) endpoint `/chat/directory` mengembalikan `display_name`/`id` sedangkan UI membaca `displayName`/`userId` (nama tampil "?" dan DM tidak bisa dibuka); (b) petugas HR tidak bisa memulai DM dengan karyawan yang kotak masuk HR-nya ia tangani (hasil direktori tersembunyi); (c) kegagalan deteksi izin membuat HTTP 403 padahal pesan sudah tersimpan, kini menjadi pesan sistem dari @hr; (d) pola regex username di form tidak valid di Chromium.
+
+Visual: ikon aplikasi dan ilustrasi halaman masuk dibuat dengan Higgsfield (gpt_image_2_5, 4 gambar, ±0,5 kredit), dipasang sebagai favicon, ikon PWA (`public/manifest.webmanifest`, 192/512/180 px) dan hero halaman `/masuk`.
+
+Unit: 17/17 PASS. Uji e2e mode OIDC (`test:e2e`, `test:ui`) tidak dijalankan ulang pada perubahan ini (NOT TESTED); kode OIDC hanya diberi penjaga `AUTH_MODE` dan tidak dipakai pada deploy mandiri. Deploy `infra/chat/deploy-chat.sh` ke VPS: NOT TESTED sampai dijalankan pemilik (skrip lolos `bash -n`; polanya sama dengan `infra/deploy.sh` yang sudah berhasil di VPS yang sama).
+
 ## Belum diuji (NOT TESTED) / terhalang
 
 | Hal | Status | Keterangan |

@@ -60,7 +60,8 @@ export function ConversationList() {
     }
   }
 
-  const existingUsernames = new Set(conversations.map((c) => c.username).filter(Boolean));
+  // Hanya DM dan percakapan layanan yang menutup hasil direktori; kotak masuk HR milik karyawan (dilihat petugas) bukan DM.
+  const existingUsernames = new Set(conversations.filter((c) => c.type === 'DM' || c.type === 'AI' || (c.type === 'HR_INBOX' && c.myRole !== 'OFFICER')).map((c) => c.username).filter(Boolean));
   const dirResults = dir.filter((u) => !existingUsernames.has(u.username));
 
   return (

@@ -1,6 +1,18 @@
-# Lemone Work & Lemone Chat
+# Lemone Chat (dan Lemone Work)
 
-Pusat akun karyawan PT Lemone Surya Indonesia (lemone.work) yang terhubung ke Lemone Chat (lemone.chat). Satu identitas, dikelola HR/admin, masuk ke Chat tanpa pendaftaran kedua.
+**Mode utama saat ini: lemone.chat berdiri sendiri.** Karyawan mendaftar sendiri dengan username + kata sandi (`AUTH_MODE=local`); pendaftar pertama otomatis menjadi admin (Owner + HR). Fitur HR (@hr, kartu izin, tab HR, absensi DEMO) tetap aktif. Portal akun lemone.work + Keycloak (`AUTH_MODE=oidc`) tetap ada di repo sebagai mode lanjutan.
+
+## Deploy lemone.chat (mode mandiri)
+
+Prasyarat: A record `lemone.chat` → IP VPS. Jalankan sekali dari Mac, idempoten (aman diulang; bila DNS belum sampai, skrip tetap memasang semuanya dan tinggal dijalankan ulang untuk sertifikat):
+
+```bash
+ssh ubuntu@43.133.129.111 'curl -fsSL https://raw.githubusercontent.com/gitstepbun/lemone/main/infra/chat/deploy-chat.sh | bash'
+```
+
+Skrip `infra/chat/deploy-chat.sh`: memasang Docker/nginx/certbot bila belum ada, clone/pull ke `~/lemone`, menghentikan tumpukan portal+Keycloak lama bila ada, membuat `.env` (secret acak), menjalankan `infra/chat/docker-compose.chat.yml` (Postgres, API, worker, chat-web; port hanya di 127.0.0.1), memasang situs nginx `lemone.chat`, melepas rute portal `/akun` dari lemone.work, lalu meminta sertifikat Let's Encrypt dan verifikasi `https://lemone.chat/api/health`. Setelah itu buka https://lemone.chat → **Daftar**.
+
+Uji alur mandiri di browser: `RESET_DB=1 pnpm --filter @lemone/api test:local` (Chromium headless; daftar 2 akun, DM realtime, izin ke @hr, persetujuan admin, ganti sandi).
 
 | Bagian | Lokasi |
 |---|---|
@@ -57,7 +69,7 @@ Hasil terakhir dan cakupan ada di `docs/laporan.md`.
 | AI | `AI_PROVIDER`, `AI_API_KEY` | `none` (asisten menjawab status saja) |
 | Signing & distribusi mobile | akun Google Play/App Store, `apps/mobile/app.json` (bundle `chat.lemone.app`) | Belum ada |
 
-## Deploy ke VPS (nginx yang sudah ada)
+## Deploy portal + Keycloak ke VPS (mode OIDC, lanjutan)
 
 VPS yang sudah melayani lemone.work lewat nginx: jalankan sekali dari Mac, idempoten (aman diulang):
 

@@ -19,6 +19,9 @@ function appFrom(p: string): AppKey {
   if (!a) throw E.notFound('Aplikasi');
   return a;
 }
+function requireOidc() {
+  if (config().AUTH_MODE !== 'oidc') throw E.notFound('Login OIDC');
+}
 
 /** Hanya path relatif same-origin yang boleh jadi tujuan setelah login. */
 export function safeReturn(r: string | undefined, fallback = '/'): string {
@@ -34,6 +37,7 @@ export class AuthController {
   /** Mulai login. Opsional: return (path), activation (id konteks aktivasi), prompt=login. */
   @Get(':app/login')
   async login(@Req() req: Request, @Res() res: Response, @Query('return') ret?: string, @Query('activation') activation?: string, @Query('prompt') prompt?: string, @Query('login_hint') loginHint?: string) {
+    requireOidc();
     const app = appFrom(String(req.params.app));
     const cfg = await oidcConfig(app);
     const verifier = client.randomPKCECodeVerifier();
@@ -58,6 +62,7 @@ export class AuthController {
 
   @Get(':app/callback')
   async callback(@Req() req: Request, @Res() res: Response) {
+    requireOidc();
     const app = appFrom(String(req.params.app));
     const pub = APPS[app].publicUrl();
     const cookieName = `la_${app.toLowerCase()}`;
@@ -159,12 +164,12 @@ export class AuthController {
         await audit({ actorUserId: s.user_id, action: 'auth.logout', targetType: 'session', targetId: sid, details: { app, sso: sso === '1' } });
       }
     }
-    if (sso === '1') {
+    if (sso === '1' && config().AUTH_MODE === 'oidc') {
       const cfg = await oidcConfig(app);
       const url = client.buildEndSessionUrl(cfg, { post_logout_redirect_uri: `${pub}/masuk`, ...(idToken ? { id_token_hint: idToken } : {}) });
       return res.json({ ok: true, redirect: url.href, ssoEnded: true });
     }
-    return res.json({ ok: true, redirect: `${pub}/masuk`, ssoEnded: false, note: 'Sesi SSO browser masih aktif sampai keluar dari auth.' });
+    return res.json({ ok: true, redirect: `${pub}/masuk`, ssoEnded: config().AUTH_MODE === 'local', note: config().AUTH_MODE === 'local' ? undefined : 'Sesi SSO browser masih aktif sampai keluar dari auth.' });
   }
 
   /** Keluar dari semua perangkat: cabut sesi aplikasi (semua app), tolak token lama, dan logout IdP. Akun tetap bisa login lagi. */
@@ -176,7 +181,7 @@ export class AuthController {
     if (req.headers['x-lemone-request'] !== '1' && p.authMode === 'SESSION') throw E.csrf();
     const n = await this.sessions.revokeAllForUser(p.userId, 'USER_LOGOUT_ALL');
     await getDb().updateTable('directory.users').set({ tokens_not_before: new Date(), authz_version: (eb) => eb('authz_version', '+', 1) }).where('id', '=', p.userId).execute();
-    await getDb().insertInto('ops.provisioning_jobs').values({ kind: 'LOGOUT_ALL', user_id: p.userId, idempotency_key: `logout-all:${p.userId}:${Date.now()}`, status: 'PENDING', payload: JSON.stringify({}) }).execute();
+    if (config().AUTH_MODE === 'oidc') await getDb().insertInto('ops.provisioning_jobs').values({ kind: 'LOGOUT_ALL', user_id: p.userId, idempotency_key: `logout-all:${p.userId}:${Date.now()}`, status: 'PENDING', payload: JSON.stringify({}) }).execute();
     res.clearCookie(APPS[app].cookie, cookieOptions(app));
     await audit({ actorUserId: p.userId, action: 'auth.logout_all', details: { sessionsRevoked: n } });
     res.json({ ok: true, sessionsRevoked: n, idp: 'DIJADWALKAN' });
@@ -199,7 +204,8 @@ export class AuthController {
       hrDivisions: p.hrDivisions,
       canUseApp: p.status === 'ACTIVE' && p.grants.includes(app),
       authMode: p.authMode,
-      idpConfigured: idp().configured,
+      idpConfigured: config().AUTH_MODE === 'oidc' && idp().configured,
+      loginMode: config().AUTH_MODE,
       erpLabel: config().ERP_ADAPTER === 'demo' ? 'DEMO' : 'ERP',
     };
   }

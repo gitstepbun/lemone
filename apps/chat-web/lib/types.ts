@@ -1,6 +1,8 @@
 export type ConversationType = 'DM' | 'GROUP' | 'HR_INBOX' | 'AI' | 'ANNOUNCEMENT';
 
 export interface Me {
+  authMode?: 'local' | 'oidc';
+  isOwner?: boolean;
   userId: string;
   username: string;
   displayName: string;

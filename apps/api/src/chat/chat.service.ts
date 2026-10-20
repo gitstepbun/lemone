@@ -107,7 +107,7 @@ export class ChatService {
       .orderBy('u.display_name')
       .limit(50)
       .execute();
-    return rows.map((r) => ({ ...r, verified: r.kind === 'SERVICE' }));
+    return rows.map((r) => ({ userId: r.id, username: r.username, displayName: r.display_name, kind: r.kind, division: r.division, position: r.position, serviceKind: r.service_kind, verified: r.kind === 'SERVICE' }));
   }
 
   async listConversations(me: Principal) {

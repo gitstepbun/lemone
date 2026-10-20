@@ -124,6 +124,33 @@ export default function SayaPage() {
         </div>
       </section>
 
+      {me?.authMode === 'local' && (
+        <section className="rounded-panel border border-gray-200 bg-white p-4">
+          <h2 className="mb-3 text-[16px] font-semibold text-ink">Ganti kata sandi</h2>
+          <form
+            className="space-y-2"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = e.currentTarget as HTMLFormElement & { current: HTMLInputElement; next: HTMLInputElement };
+              setBusy('pw');
+              try {
+                await post('/auth/chat/change-password', { current: f.current.value, next: f.next.value });
+                toast('Sandi diganti. Masuk kembali.');
+                window.location.href = '/masuk';
+              } catch (err) {
+                toast(errMsg(err), 'error');
+              } finally {
+                setBusy(null);
+              }
+            }}
+          >
+            <input name="current" type="password" placeholder="Sandi saat ini" required className="h-11 w-full rounded-field border border-gray-300 px-3 text-[15px]" autoComplete="current-password" />
+            <input name="next" type="password" placeholder="Sandi baru (min. 8)" required minLength={8} className="h-11 w-full rounded-field border border-gray-300 px-3 text-[15px]" autoComplete="new-password" />
+            <Button type="submit" loading={busy === 'pw'} disabled={busy !== null}>Simpan sandi</Button>
+          </form>
+        </section>
+      )}
+
       <section className="space-y-2 pb-4">
         <Button onClick={logout} loading={busy === 'logout'} disabled={busy !== null}>
           Keluar dari aplikasi ini

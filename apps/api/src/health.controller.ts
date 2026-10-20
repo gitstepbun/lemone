@@ -12,11 +12,11 @@ export class HealthController {
   async health() {
     let db = 'ok';
     try { await sql`select 1`.execute(getDb()); } catch (e) { db = `gagal: ${(e as Error).message}`; }
-    let idpStatus = 'belum_terhubung';
-    try {
+    let idpStatus = config().AUTH_MODE === 'local' ? 'tidak_dipakai' : 'belum_terhubung';
+    if (config().AUTH_MODE === 'oidc') try {
       const r = await fetch(`${config().OIDC_ISSUER}/.well-known/openid-configuration`);
       idpStatus = r.ok ? 'ok' : `http_${r.status}`;
     } catch { idpStatus = 'tidak_terjangkau'; }
-    return { ok: db === 'ok', db, idp: idpStatus, idpAdmin: idp().configured ? 'dikonfigurasi' : 'belum_terhubung', erp: { adapter: erp().name, label: erp().label, connected: erp().connected }, tz: config().BUSINESS_TZ, time: new Date().toISOString() };
+    return { ok: db === 'ok', db, idp: idpStatus, idpAdmin: config().AUTH_MODE === 'local' ? 'tidak_dipakai' : idp().configured ? 'dikonfigurasi' : 'belum_terhubung', authMode: config().AUTH_MODE, erp: { adapter: erp().name, label: erp().label, connected: erp().connected }, tz: config().BUSINESS_TZ, time: new Date().toISOString() };
   }
 }

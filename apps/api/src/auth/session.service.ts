@@ -57,6 +57,7 @@ export class SessionService {
 
   /** Segarkan access token bila hampir kedaluwarsa. Gagal refresh = sesi IdP hilang → sesi aplikasi dicabut. */
   async ensureFresh(s: SessionRow, app: AppKey): Promise<boolean> {
+    if (config().AUTH_MODE === 'local') return s.access_expires_at.getTime() > Date.now();
     if (s.access_expires_at.getTime() - Date.now() > 20_000) return true;
     const t = await this.tokens(s.id);
     if (!t?.refresh_token) {

@@ -25,7 +25,7 @@ export class ChatController {
     return {
       userId: me.userId, username: me.username, displayName: me.displayName, employeeId: me.employeeId,
       roles: me.roles.map((r) => r.role), isHr: me.hrDivisions !== undefined, isApprover: me.roles.some((r) => r.role === 'APPROVER'),
-      hrInbox: `@${config().HR_INBOX_USERNAME}`, erpLabel: config().ERP_ADAPTER === 'demo' ? 'DEMO' : 'ERP', aiStatus: config().AI_PROVIDER === 'none' ? 'BELUM_TERHUBUNG' : 'TERHUBUNG',
+      hrInbox: `@${config().HR_INBOX_USERNAME}`, authMode: config().AUTH_MODE, isOwner: me.roles.some((r) => r.role === 'OWNER'), erpLabel: config().ERP_ADAPTER === 'demo' ? 'DEMO' : 'ERP', aiStatus: config().AI_PROVIDER === 'none' ? 'BELUM_TERHUBUNG' : 'TERHUBUNG',
     };
   }
 
@@ -89,7 +89,14 @@ export class ChatController {
     const m = await this.chat.send(me, id, input);
     let detection: unknown = null;
     if (!m.duplicate && m.conversationType === 'HR_INBOX' && m.senderRole === 'MEMBER') {
-      detection = await this.leave.handleInboxMessage(me, { id: m.id, conversation_id: m.conversation_id, body: m.body, forwarded: m.forwarded, reply_to_id: m.reply_to_id, kind: m.kind });
+      try {
+        detection = await this.leave.handleInboxMessage(me, { id: m.id, conversation_id: m.conversation_id, body: m.body, forwarded: m.forwarded, reply_to_id: m.reply_to_id, kind: m.kind });
+      } catch (err) {
+        // Pesan sudah tersimpan; kegagalan deteksi tidak boleh terlihat sebagai gagal kirim.
+        const svc = await this.chat.serviceUser('HR_INBOX');
+        await this.chat.sendAsService(m.conversation_id, svc.user_id, { kind: 'SYSTEM', body: `Pengajuan belum bisa diproses otomatis: ${(err as Error).message}. Petugas HR akan membaca pesan Anda.` });
+        detection = { intent: 'ERROR', message: (err as Error).message };
+      }
     }
     if (!m.duplicate && m.conversationType === 'AI') await this.ai.reply(me, m.conversation_id, m.body ?? '');
     return { message: m, detection };
